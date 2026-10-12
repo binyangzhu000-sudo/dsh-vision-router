@@ -7,6 +7,70 @@ export function installDesktopVisionToggleAudit() {
   const history = []
   // Identifiers only; no provider error bodies or credentials in evidence.
   const domClicks = []
+  // Test-only input targeting evidence. No coordinates, selectors, text, ids,
+  // session information, or arbitrary target attributes leave this helper.
+  const pointerHistory = []
+  const nodeIdentities = new WeakMap()
+  let nextNodeIdentity = 1
+  let lastToggleBounds = null
+  let recentToggleDown = null
+  const nodeIdentity = (node) => {
+    if (!node || typeof node !== 'object') return null
+    if (!nodeIdentities.has(node)) nodeIdentities.set(node, nextNodeIdentity++)
+    return nodeIdentities.get(node)
+  }
+  const bounds = (button) => {
+    if (!button || typeof button.getBoundingClientRect !== 'function') return null
+    try {
+      const rect = button.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0
+        ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }
+        : null
+    } catch (_) { return null }
+  }
+  const near = (rect, x, y) => rect != null && Number.isFinite(x) &&
+    Number.isFinite(y) && x >= rect.left - 12 && x <= rect.right + 12 &&
+    y >= rect.top - 12 && y <= rect.bottom + 12
+  const eventTargetToggle = (event) => {
+    try { return event.target?.closest?.(selector) ?? null }
+    catch (_) { return null }
+  }
+  const recordPointer = (event) => {
+    const button = document.querySelector(selector)
+    const timestamp = Math.round(performance.now())
+    const targetButton = eventTargetToggle(event)
+    const currentBounds = bounds(button)
+    if (currentBounds) lastToggleBounds = currentBounds
+    const nearToggle = near(currentBounds || lastToggleBounds, event.clientX, event.clientY)
+    const nearDown = recentToggleDown && timestamp - recentToggleDown.ms < 1500 &&
+      Math.abs((event.clientX ?? 0) - recentToggleDown.x) <= 24 &&
+      Math.abs((event.clientY ?? 0) - recentToggleDown.y) <= 24
+    const relevant = Boolean(targetButton || nearToggle || nearDown)
+    if (!relevant) return
+    if (event.type === 'pointerdown' || event.type === 'mousedown') {
+      recentToggleDown = {
+        ms: timestamp, x: event.clientX, y: event.clientY,
+      }
+    }
+    let hitButton = null
+    try {
+      hitButton = document.elementFromPoint?.(event.clientX, event.clientY)
+        ?.closest?.(selector) ?? null
+    } catch (_) {}
+    pointerHistory.push({
+      phase: event.type,
+      ms: timestamp,
+      targetToggle: Boolean(targetButton),
+      targetSameAsCurrent: Boolean(targetButton && targetButton === button),
+      targetConnected: event.target?.isConnected !== false,
+      targetNode: nodeIdentity(targetButton),
+      currentNode: nodeIdentity(button),
+      hitToggle: Boolean(hitButton),
+      hitSameAsCurrent: Boolean(hitButton && hitButton === button),
+      revision,
+    })
+    if (pointerHistory.length > 32) pointerHistory.shift()
+  }
   const alertHistory = []
   let observedAlerts = new Map()
   let observedNode = document.querySelector(selector)
@@ -24,7 +88,7 @@ export function installDesktopVisionToggleAudit() {
     }
   }
   const record = (phase) => {
-    history.push({ phase, ms: Math.round(performance.now()), ...inspect() })
+    history.push({ phase, ms: Math.round(performance.now()), buttonNode: nodeIdentity(document.querySelector(selector)), ...inspect() })
     if (history.length > 48) history.shift()
   }
   const alertEvent = (phase, errorCode) => {
@@ -48,6 +112,9 @@ export function installDesktopVisionToggleAudit() {
     observedAlerts = next
   }
   if (typeof document.addEventListener === 'function') {
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+      document.addEventListener(type, recordPointer, true)
+    }
     document.addEventListener('click', (event) => {
       if (!event.target?.closest?.(selector)) return
       domClicks.push({ ms: Math.round(performance.now()), ...inspect() })
@@ -87,6 +154,7 @@ export function installDesktopVisionToggleAudit() {
   window.__dvrDesktopToggleAudit = {
     history,
     domClicks,
+    pointerHistory,
     alertHistory,
     record,
     stableFor(expected, minimumMs) {

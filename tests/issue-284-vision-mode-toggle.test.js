@@ -997,9 +997,9 @@ test('issue #684 preserves two DOM clicks and the expiring rejection alert witho
       querySelector: () => button,
       querySelectorAll: (selector) => selector === '[role="alert"]' ? alerts : [],
       addEventListener(type, callback, capture) {
-        assert.equal(type, 'click')
+        assert.ok(['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].includes(type))
         assert.equal(capture, true)
-        onClick = callback
+        if (type === 'click') onClick = callback
       },
     },
     performance: { now: () => now },
@@ -1042,3 +1042,66 @@ test('issue #684 preserves two DOM clicks and the expiring rejection alert witho
   assert.ok(audit.alertHistory.length <= 32)
   assert.equal(JSON.stringify(audit.alertHistory).includes('SECRET VALUE'), false)
 })
+
+test('issue #684 pointer audit detects press on Vision button retargeted to ancestor before click', () => {
+  let now = 1000
+  let button = make684Button()
+  button.getBoundingClientRect = () => ({ left: 10, right: 110, top: 20, bottom: 50, width: 100, height: 30 })
+  button.isConnected = true
+  button.closest = (selector) => selector === '[data-vision-router-mode-toggle="true"]' ? button : null
+  const ancestor = { isConnected: true, closest: () => null }
+  const listeners = new Map()
+  let mutation
+  const globals = {
+    window: {},
+    document: {
+      body: {},
+      querySelector: () => button,
+      querySelectorAll: () => [],
+      addEventListener(type, callback) {
+        const list = listeners.get(type) || []
+        list.push(callback)
+        listeners.set(type, list)
+      },
+      elementFromPoint: () => button || ancestor,
+    },
+    performance: { now: () => now },
+    MutationObserver: class {
+      constructor(callback) { mutation = callback }
+      observe() {}
+    },
+  }
+  vm.runInNewContext('(' + installDesktopVisionToggleAudit.toString() + ')()', globals)
+  const audit = globals.window.__dvrDesktopToggleAudit
+  const fire = (type, target) => {
+    for (const callback of listeners.get(type) || []) {
+      callback({ type, target, clientX: 50, clientY: 30 })
+    }
+  }
+  fire('pointerdown', button)
+  fire('mousedown', button)
+  now += 6
+  const previous = button
+  previous.isConnected = false
+  button = make684Button()
+  button.getBoundingClientRect = previous.getBoundingClientRect
+  button.isConnected = true
+  button.closest = previous.closest
+  mutation([{ type: 'childList', addedNodes: [button], removedNodes: [previous] }])
+  now += 7
+  fire('pointerup', ancestor)
+  fire('mouseup', ancestor)
+  fire('click', ancestor)
+  assert.equal(audit.domClicks.length, 0, 'React button onClick would never fire')
+  assert.equal(audit.pointerHistory.length, 5)
+  assert.equal(audit.pointerHistory[0].phase, 'pointerdown')
+  assert.equal(audit.pointerHistory[0].targetToggle, true)
+  assert.equal(audit.pointerHistory[0].targetConnected, true)
+  assert.equal(audit.pointerHistory.at(-1).phase, 'click')
+  assert.equal(audit.pointerHistory.at(-1).targetToggle, false)
+  assert.notEqual(audit.pointerHistory[0].currentNode, audit.pointerHistory.at(-1).currentNode)
+  assert.equal(audit.pointerHistory.at(-1).hitSameAsCurrent, true)
+  assert.equal(audit.pointerHistory.every(row => Object.keys(row).every(
+    key => !/text|credential|token|prompt|provider|session|url|coordinate|clientX|clientY/i.test(key)
+  )), true, 'pointer trace must not leak sensitive values or coordinates')
+});
