@@ -55,3 +55,35 @@ must not be treated as HMR. Source changes that affect Host runtime services
 or settings require an isolated Host restart; reloading Chrome alone does not
 reload Host modules. Run established Settings and Issue #684 ON→OFF real-Host
 regression gates separately before claiming all-round compatibility.
+
+## Upstream native Web HMR (opt-in)
+
+DSH 0.2.0-rc.2 already provides its own Web plugin HMR transport:
+`@deepseek-ai/dsh-client-hmr` stat-polls the canonical built `lib/client.js`
+and publishes `rebuilt` events through `/plugins/events`. The browser Client
+Modules controller invalidates and replaces the plugin fiber, with **no page
+navigation**. It is not React Fast Refresh: local component state inside the
+plugin resets, while unrelated Web page/session state survives. Electron's
+Desktop scheme does **not** use this SSE transport.
+
+With the isolated DSH Web Host pointing to this checkout's Client artifacts
+and the usual `DVR_DEV_WEB_URL` / `DVR_DEV_CHROME` variables, use:
+
+```sh
+export DVR_DEV_RELOAD_MODE=native-hmr
+pnpm dev:web
+```
+
+The dev controller probes the HMR row in DSH's boot manifest and an
+HTTP 200 `text/event-stream` response from `/plugins/events`. If either is
+unavailable, it closes private Chrome and reports an error rather than
+pretending to hot-swap the UI. `DVR_DEV_RELOAD_MODE=page` (the default) keeps
+the older full-page fallback.
+
+**Important DVR boundary:** native HMR replaces the DSH `dsh.client` factory,
+not the Host-injected `client-script-carrier` bootstrap JS/CSS or server-side
+settings bridges. The latter retain their one-shot per-page fence and may
+need a Host restart and a fresh page to update. Do not claim that changing
+Host-side JS automatically updates those browser carriers. Do not interpret
+HMR as fixing Issue #684's Host selection/recovery bug; that needs its own
+real Desktop ON→OFF evidence.
