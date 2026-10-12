@@ -88,7 +88,7 @@ export function installDesktopVisionToggleAudit() {
     }
   }
   const record = (phase) => {
-    history.push({ phase, ms: Math.round(performance.now()), ...inspect() })
+    history.push({ phase, ms: Math.round(performance.now()), buttonNode: nodeIdentity(document.querySelector(selector)), ...inspect() })
     if (history.length > 48) history.shift()
   }
   const alertEvent = (phase, errorCode) => {
