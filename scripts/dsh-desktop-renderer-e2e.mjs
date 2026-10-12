@@ -900,6 +900,9 @@ try {
       ).catch(() => [])
       const interactionEvidence = await page.evaluate(() => ({
         domClicks: window.__dvrDesktopToggleAudit?.domClicks?.slice(-8) ?? [],
+        // Capture-phase pointer target continuity distinguishes missing DOM
+        // dispatch from a press/release retargeted outside a replaced button.
+        pointerHistory: window.__dvrDesktopToggleAudit?.pointerHistory?.slice(-32) ?? [],
         alertEvents: window.__dvrDesktopToggleAudit?.alertHistory?.slice(-32) ?? [],
       })).catch(() => ({ unavailable: true }))
       const stability = await page.evaluate(() =>
