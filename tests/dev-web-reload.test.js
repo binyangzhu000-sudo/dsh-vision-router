@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import test from 'node:test'
 import { assertDevArtifacts, createBuildQueue, startDevBrowser, validateDevTarget } from '../scripts/dev-web-reload.mjs'
 
-const target = { url: 'http://127.0.0.1:19000/?token=NOT_A_REAL_TOKEN', chrome: '/test/chrome' }
+const target = { url: 'http://127.0.0.1:19000/?token=NOT_A_REAL_TOKEN', chrome: resolve('test-chrome') }
 const sleep = ms => new Promise(done => setTimeout(done, ms))
 const until = async predicate => {
   for (let i = 0; i < 200; i++) {
@@ -27,7 +27,7 @@ test('dev browser is opt-in and refuses remote, credentialed, or insecure target
     assert.throws(() => validateDevTarget(bad, target.chrome), /loopback/)
   }
   assert.throws(() => validateDevTarget(target.url, 'chrome'), /absolute Chrome path/)
-  assert.equal(validateDevTarget('http://[::1]:19999/', '/bin/chrome').url, 'http://[::1]:19999/')
+  assert.equal(validateDevTarget('http://[::1]:19999/', target.chrome).url, 'http://[::1]:19999/')
 })
 
 test('bursty events coalesce without concurrent builds, edits during build cause one more build', async () => {
