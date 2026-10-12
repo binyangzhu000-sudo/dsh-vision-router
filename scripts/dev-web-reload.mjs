@@ -178,7 +178,7 @@ function main() {
       console.log(`[dev:web] build ${current} started`)
       // The hand-embedded maintenance action must match its canonical source.
       await childCommand('node', ['scripts/sync-client-embedded-modules.mjs', '--check'], x => { child = x })
-      await childCommand('pnpm', ['build'], x => { child = x })
+      await childCommand('node', ['scripts/dev-staged-build.mjs'], x => { child = x })
       await assertDevArtifacts()
       await childCommand('node', ['scripts/verify-source-artifact-map.mjs'], x => { child = x })
       console.log(`[dev:web] build ${current} ready`)
@@ -216,7 +216,7 @@ function main() {
   }
   try {
     addWatch('src', true, () => true)
-    addWatch('scripts', false, name => /^(?:build-source-artifacts|sync-client-embedded-modules|verify-source-artifact-map)\.mjs$/.test(name))
+    addWatch('scripts', false, name => /^(?:build-source-artifacts|dev-staged-build|sync-client-embedded-modules|verify-source-artifact-map)\.mjs$/.test(name))
     addWatch('.', false, name => /^(?:package\.json|tsconfig\.build\.json)$/.test(name))
   } catch (error) {
     for (const w of watched) w.close()

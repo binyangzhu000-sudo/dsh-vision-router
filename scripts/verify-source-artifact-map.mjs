@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
 const SOURCE = path.join(ROOT, 'src')
+const rootFlag = process.argv.indexOf('--artifact-root')
+if (rootFlag >= 0 && !process.argv[rootFlag + 1]) throw new Error('missing --artifact-root path')
+const ARTIFACT_ROOT = rootFlag >= 0 ? path.resolve(process.argv[rootFlag + 1]) : ROOT
 
 async function filesUnder(directory) {
   const out = []
@@ -55,7 +58,7 @@ for (const source of sources) {
   // check-then-use pair (a file could disappear between the two calls), and it
   // made the verifier report a *stale* artifact identity on a race. A missing
   // artifact is still reported as such; any other read error keeps propagating.
-  const artifact = path.join(ROOT, artifactRelative)
+  const artifact = path.join(ARTIFACT_ROOT, artifactRelative)
   const [sourceResult, artifactResult] = await Promise.all([
     readFile(source).then((bytes) => ({ bytes }), (error) => ({ error })),
     readFile(artifact).then((bytes) => ({ bytes }), (error) => ({ error })),
@@ -84,13 +87,13 @@ for (const source of sources) {
 const actual = new Set()
 for (const rootFile of ['entry.js', 'index.js']) {
   try {
-    await stat(path.join(ROOT, rootFile))
+    await stat(path.join(ARTIFACT_ROOT, rootFile))
     actual.add(rootFile)
   } catch {}
 }
 try {
-  for (const file of await filesUnder(path.join(ROOT, 'lib'))) {
-    actual.add(slash(path.relative(ROOT, file)))
+  for (const file of await filesUnder(path.join(ARTIFACT_ROOT, 'lib'))) {
+    actual.add(slash(path.relative(ARTIFACT_ROOT, file)))
   }
 } catch {}
 

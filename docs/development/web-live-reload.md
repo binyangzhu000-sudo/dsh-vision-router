@@ -2,10 +2,13 @@
 
 `pnpm dev:web` is an **opt-in developer tool**. It watches the canonical
 `src/` tree and relevant build scripts, checks the generated maintenance
-Client code, runs the existing `pnpm build`, checks the runtime entrypoints,
-and verifies the source-to-artifact map before reporting a successful build.
-Builds never overlap. A failed/incomplete build does **not** trigger any
-browser reload, and the watcher keeps working after an error.
+Client code, builds the same 183 artifacts into an isolated temporary directory,
+verifies the source-to-artifact map **before publication**, and atomically
+publishes the entry files with `lib/client.js` **last**. Builds never overlap.
+A compile/verification failure leaves every previously published artifact
+untouched, preventing upstream DSH's independent Client-HMR stat watcher from
+mistaking an incomplete build for a new revision. Watcher errors do not kill
+future builds. The formal `pnpm build` / release packaging remains unchanged.
 
 Start in build-only mode:
 
@@ -87,3 +90,24 @@ need a Host restart and a fresh page to update. Do not claim that changing
 Host-side JS automatically updates those browser carriers. Do not interpret
 HMR as fixing Issue #684's Host selection/recovery bug; that needs its own
 real Desktop ON→OFF evidence.
+
+### Why a staged developer build is necessary
+
+The production artifact builder removes `lib/`, `entry.js`, and `index.js`
+before compiling to their final paths. That is acceptable for CI/release
+packaging, but **unsafe as a development HMR trigger**: a TypeScript compiler
+failure can leave deleted `.js` outputs and still change the live `client.js`
+file metadata while upstream DSH polls it. The developer watcher instead calls
+`scripts/dev-staged-build.mjs` to compile into a temporary folder under the
+checkout, validates the complete map using
+`verify-source-artifact-map.mjs --artifact-root <stage>`, and publishes files
+with atomic rename operations. The watched Client entry is written last.
+
+The verified publication is not a full database transaction; a disk error
+halfway through publishing siblings can still need a clean rebuild/restart.
+No claim is made that Host runtime modules themselves are hot replaced.
+
+A real DSH 0.2.0-rc.2/Chrome/Node24 acceptance test covered:
+`src/lib/client.js` A→B through the dev watcher, invalid TypeScript compile
+with old B artifact unchanged, then repair B→C, without any browser navigation
+or unexpected JavaScript exceptions.
