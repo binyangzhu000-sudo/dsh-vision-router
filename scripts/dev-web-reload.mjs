@@ -11,14 +11,15 @@ import { fileURLToPath } from 'node:url'
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 
-export function validateDevTarget(raw, chrome) {
+export function validateDevTarget(raw, chrome, reloadMode = 'page') {
   let url
   try { url = new URL(raw) } catch { throw new Error('Expected a local DSH Web URL') }
   if (url.protocol !== 'http:' || !LOOPBACK_HOSTS.has(url.hostname)
     || url.username || url.password || !isAbsolute(chrome || '')) {
     throw new Error('Development reload requires HTTP loopback DSH and an absolute Chrome path')
   }
-  return { url: url.href, chrome }
+  if (!['page', 'native-hmr'].includes(reloadMode)) throw new Error('Unsupported development reload mode')
+  return { url: url.href, chrome, reloadMode }
 }
 
 export function createBuildQueue({ build, onError = console.error, debounceMs = 180 }) {
@@ -59,8 +60,8 @@ export function createBuildQueue({ build, onError = console.error, debounceMs = 
   }
 }
 
-export async function startDevBrowser({ url, chrome, headless = false }, { loadPuppeteer } = {}) {
-  const target = validateDevTarget(url, chrome)
+export async function startDevBrowser({ url, chrome, headless = false, reloadMode = 'page' }, { loadPuppeteer } = {}) {
+  const target = validateDevTarget(url, chrome, reloadMode)
   // Puppeteer is an existing DVR dependency. Chrome gets its own temporary
   // user profile and a private CDP pipe, not a globally reachable debug port.
   const imported = loadPuppeteer ? await loadPuppeteer() : await import('puppeteer-core')
@@ -102,10 +103,23 @@ export async function startDevBrowser({ url, chrome, headless = false }, { loadP
       }
     }
     await navigate(true)
+    if (target.reloadMode === 'native-hmr') {
+      const ready = await page.evaluate(async () => {
+        if (!globalThis.__DSH_BOOT__?.entries?.some(row => row.id === '@deepseek-ai/dsh-client-hmr')) return false
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 4_000)
+        try {
+          const response = await fetch('/plugins/events', { signal: controller.signal, cache: 'no-store' })
+          return response.ok && response.headers.get('content-type')?.includes('text/event-stream') === true
+        } catch { return false }
+        finally { clearTimeout(timer); controller.abort() }
+      })
+      if (!ready) throw new Error('Native DSH Web HMR is unavailable; use page reload mode')
+    }
     return {
       reload() {
         if (stopped) return Promise.reject(new Error('Development Chrome was closed'))
-        const next = tail.then(() => navigate(false))
+        const next = tail.then(() => target.reloadMode === 'native-hmr' ? undefined : navigate(false))
         tail = next.catch(() => {})
         return next
       },
@@ -155,7 +169,8 @@ function main() {
   let stopping = false
   let buildCount = 0
   const browserTarget = process.env.DVR_DEV_WEB_URL
-    ? validateDevTarget(process.env.DVR_DEV_WEB_URL, process.env.DVR_DEV_CHROME)
+    ? validateDevTarget(process.env.DVR_DEV_WEB_URL, process.env.DVR_DEV_CHROME,
+      process.env.DVR_DEV_RELOAD_MODE || 'page')
     : null
   const queue = createBuildQueue({
     async build() {
@@ -174,10 +189,14 @@ function main() {
             headless: process.env.DVR_DEV_HEADLESS === '1' })
           if (stopping) { await opened.close(); return }
           browser = opened
-          console.log('[dev:web] isolated Web Chrome opened')
+          console.log(browserTarget.reloadMode === 'native-hmr'
+            ? '[dev:web] upstream native Web HMR is active; page remains mounted'
+            : '[dev:web] isolated Web Chrome opened')
         } else {
           await browser.reload()
-          console.log('[dev:web] isolated Web Chrome refreshed')
+          console.log(browserTarget.reloadMode === 'native-hmr'
+            ? '[dev:web] valid build; DSH native HMR watches the Client artifact'
+            : '[dev:web] isolated Web Chrome refreshed')
         }
       } catch (error) {
         // Puppeteer errors can embed the secret token URL. Never print them.
@@ -215,7 +234,7 @@ function main() {
   process.once('SIGTERM', stop)
   queue.request()
   console.log('[dev:web] watching src/; Client runs only after verified rebuild')
-  if (browserTarget) console.log('[dev:web] loopback Chrome reload enabled (not HMR)')
+  if (browserTarget) console.log(`[dev:web] isolated Chrome mode: ${browserTarget.reloadMode}`)
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) main()

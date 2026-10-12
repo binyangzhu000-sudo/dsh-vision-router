@@ -121,3 +121,38 @@ test('only a complete DSH Client factory is accepted after rebuild', async () =>
     await assertDevArtifacts(dir)
   } finally { await rm(dir, {force:true,recursive:true}) }
 })
+
+test('native DSH Web HMR is opt-in and suppresses full page reload when SSE is healthy', async () => {
+  let calls = 0; let closed = 0
+  const page = {
+    isClosed: () => false, url: () => 'http://127.0.0.1:19000/',
+    setRequestInterception: async () => {}, on: () => {},
+    goto: async () => ({ status: () => 200 }),
+    evaluate: async fn => { assert.equal(typeof fn, 'function'); calls++; return true },
+    reload: async () => { assert.fail('must not navigate on native HMR') },
+  }
+  const handle = await startDevBrowser({ ...target, reloadMode: 'native-hmr' }, {
+    loadPuppeteer: async () => ({ launch: async () => ({
+      newPage: async () => page, close: async () => { closed++ },
+    }) }),
+  })
+  await handle.reload()
+  await handle.close()
+  assert.equal(calls, 1)
+  assert.equal(closed, 1)
+  assert.throws(() => validateDevTarget(target.url, target.chrome, 'nonsense'), /Unsupported/)
+})
+
+test('native HMR fails closed and releases its private Chrome when DSH SSE is absent', async () => {
+  let closed = 0
+  await assert.rejects(startDevBrowser({ ...target, reloadMode: 'native-hmr' }, {
+    loadPuppeteer: async () => ({ launch: async () => ({
+      newPage: async () => ({
+        isClosed: () => false, url: () => 'http://127.0.0.1:19000/',
+        setRequestInterception: async () => {}, on: () => {},
+        goto: async () => ({status: () => 200}), evaluate: async () => false,
+      }), close: async () => { closed++ },
+    }) }),
+  }), /Native DSH Web HMR is unavailable/)
+  assert.equal(closed, 1)
+})
