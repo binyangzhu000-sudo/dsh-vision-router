@@ -1,7 +1,6 @@
 const wrappedContexts = new WeakMap()
 const wrappedLlmServices = new WeakMap()
-const preparedAdapterCompat = new WeakMap()
-const fullAdapterContractCompat = new WeakMap()
+const adapterContractCompat = Array.from({ length: 4 }, () => new WeakMap())
 
 export const DEFAULT_ADAPTER_RECONCILE_MAX_PASSES = 32
 
@@ -37,13 +36,18 @@ function noImageRequestPricing() {
   return undefined
 }
 
+function normalizedImageRequestTarget(_provider, _model, image) {
+  return { width: image.width, height: image.height, maxBytes: image.bytes }
+}
+
 /**
  * Normalize Vision Router-owned duck-typed adapters to the Host adapter
  * contracts that have base-class defaults in newer DSH releases.
  *
  * DSH 0.1.1 started dispatching through adapter.prepareCall(). DSH 0.1.2 adds
  * adapter.imageRequestPricing() and the token meter resolves it synchronously
- * on every measurement. Vision Router intentionally registers plain adapter
+ * on every measurement. DSH 0.2.1 adds adapter.imageRequestTarget() for
+ * screenshot consumers, with a base-class identity projection default. Vision Router intentionally registers plain adapter
  * objects, so neither inherited default exists unless we materialize it here.
  *
  * Request-image pricing is deliberately NOT delegated to some other adapter.
@@ -51,6 +55,9 @@ function noImageRequestPricing() {
  * only that exact route can truthfully declare its projection. `undefined` is
  * LlmAdapter's default and keeps the Host's provider-neutral heuristic. An
  * adapter that explicitly implements imageRequestPricing remains authoritative.
+ * Image request targets likewise default to the Host's normalized-image
+ * identity projection, never a guessed provider-specific resize. An explicit
+ * route-owned imageRequestTarget remains authoritative.
  *
  * The compatibility method is installed non-enumerably on extensible adapters
  * to preserve registration identity. Frozen/sealed adapters fall back to one
@@ -61,17 +68,20 @@ export function ensureAdapterContracts(adapter, options = {}) {
   if (!isAdapter(adapter)) return adapter
 
   const includeImageRequestPricing = options.imageRequestPricing === true
+  const includeImageRequestTarget = options.imageRequestTarget === true
   const needsPrepareCall = !hasFunction(adapter, 'prepareCall')
   const needsImageRequestPricing =
     includeImageRequestPricing && !hasFunction(adapter, 'imageRequestPricing')
-  if (!needsPrepareCall && !needsImageRequestPricing) return adapter
+  const needsImageRequestTarget = includeImageRequestTarget && !hasFunction(adapter, 'imageRequestTarget')
+  if (!needsPrepareCall && !needsImageRequestPricing && !needsImageRequestTarget) return adapter
 
-  const cache = includeImageRequestPricing ? fullAdapterContractCompat : preparedAdapterCompat
+  const cache = adapterContractCompat[Number(includeImageRequestPricing) + 2 * Number(includeImageRequestTarget)]
   const cached = cache.get(adapter)
   if (cached) return cached
 
   const prepareCall = needsPrepareCall ? createPrepareCallFallback(adapter) : undefined
   const imageRequestPricing = needsImageRequestPricing ? noImageRequestPricing : undefined
+  const imageRequestTarget = needsImageRequestTarget ? normalizedImageRequestTarget : undefined
   const descriptors = {}
   if (prepareCall !== undefined) {
     descriptors.prepareCall = {
@@ -85,6 +95,13 @@ export function ensureAdapterContracts(adapter, options = {}) {
       configurable: true,
       writable: true,
       value: imageRequestPricing,
+    }
+  }
+  if (imageRequestTarget !== undefined) {
+    descriptors.imageRequestTarget = {
+      configurable: true,
+      writable: true,
+      value: imageRequestTarget,
     }
   }
 
@@ -102,6 +119,9 @@ export function ensureAdapterContracts(adapter, options = {}) {
         if (property === 'prepareCall' && prepareCall !== undefined) return prepareCall
         if (property === 'imageRequestPricing' && imageRequestPricing !== undefined) {
           return imageRequestPricing
+        }
+        if (property === 'imageRequestTarget' && imageRequestTarget !== undefined) {
+          return imageRequestTarget
         }
         const value = Reflect.get(target, property, target)
         if (typeof value !== 'function') return value
@@ -131,6 +151,14 @@ function llmSupportsImageRequestPricing(llm) {
   }
 }
 
+function llmSupportsImageRequestTarget(llm) {
+  try {
+    return typeof Reflect.get(llm, 'imageRequestTarget', llm) === 'function'
+  } catch {
+    return false
+  }
+}
+
 function wrapLlmService(llm) {
   if (!isAdapter(llm)) return llm
   const cached = wrappedLlmServices.get(llm)
@@ -140,6 +168,7 @@ function wrapLlmService(llm) {
   // historical adapter shape, while Hosts exposing the new route-pricing seam
   // receive the base-class-compatible default on our duck-typed adapters.
   const includeImageRequestPricing = llmSupportsImageRequestPricing(llm)
+  const includeImageRequestTarget = llmSupportsImageRequestTarget(llm)
   const wrapped = new Proxy(llm, {
     get(target, property) {
       if (property === 'registerAdapter') {
@@ -149,7 +178,10 @@ function wrapLlmService(llm) {
           registerAdapter.call(
             target,
             providers,
-            ensureAdapterContracts(adapter, { imageRequestPricing: includeImageRequestPricing }),
+            ensureAdapterContracts(adapter, {
+              imageRequestPricing: includeImageRequestPricing,
+              imageRequestTarget: includeImageRequestTarget,
+            }),
             ...rest,
           )
       }
@@ -238,8 +270,9 @@ export function createCoalescingRunner(run, options = {}) {
  * their native event semantics.
  *
  * The same deepest registration boundary also normalizes Vision Router-owned
- * adapter contracts: prepareCall for DSH 0.1.1+, and imageRequestPricing when
- * the Host exposes the DSH 0.1.2 route-pricing seam. This stays scoped to the
+ * adapter contracts: prepareCall for DSH 0.1.1+, imageRequestPricing when
+ * the Host exposes the DSH 0.1.2 route-pricing seam, and imageRequestTarget
+ * when the Host exposes the DSH 0.2.1 screenshot projection seam. This stays scoped to the
  * wrapped context instead of monkey-patching the Host LLM service process-wide.
  */
 export function contextWithCoalescedAdapterUpdates(ctx) {
