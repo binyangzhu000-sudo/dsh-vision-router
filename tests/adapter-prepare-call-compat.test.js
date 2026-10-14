@@ -276,3 +276,62 @@ test('DSH 0.1.1 prepareCall compatibility composes with runtime performance obse
   })
   assert.equal(store.get('p/m').runtimeLatencyMsByAxis.ocr, 240)
 })
+
+test('DSH 0.2.1 imageRequestTarget defaults to normalized image identity without changing legacy adapters', () => {
+  const adapter = { async *stream() {} }
+  const beforeKeys = Object.keys(adapter)
+  assert.equal(ensureAdapterContracts(adapter), adapter)
+  assert.equal('imageRequestTarget' in adapter, false, 'legacy Host does not require the new method')
+  const adapted = ensureAdapterContracts(adapter, { imageRequestTarget: true })
+  assert.equal(adapted, adapter)
+  assert.deepEqual(adapted.imageRequestTarget('vision-http', 'model', {
+    width: 2048, height: 1024, bytes: 512_000,
+  }), { width: 2048, height: 1024, maxBytes: 512_000 })
+  assert.deepEqual(Object.keys(adapter), beforeKeys, 'compat method must be non-enumerable')
+})
+
+test('DSH 0.2.1 imageRequestTarget preserves explicit route projection', () => {
+  const projection = { width: 768, height: 768, maxBytes: 200_000 }
+  const native = (_provider, _model, _image) => projection
+  const adapter = { imageRequestTarget: native, async *stream() {} }
+  const adapted = ensureAdapterContracts(adapter, { imageRequestPricing: true, imageRequestTarget: true })
+  assert.equal(adapted, adapter)
+  assert.equal(adapted.imageRequestTarget, native)
+  assert.equal(adapted.imageRequestTarget('vendor', 'visual', { width: 3000, height: 3000, bytes: 999_999 }), projection)
+})
+
+test('DSH 0.2.1 frozen adapters receive all three methods through one scoped proxy', async () => {
+  const adapter = Object.freeze({ async *stream() {} })
+  const adapted = ensureAdapterContracts(adapter, { imageRequestPricing: true, imageRequestTarget: true })
+  assert.notEqual(adapted, adapter)
+  assert.equal(adapted, ensureAdapterContracts(adapter, { imageRequestPricing: true, imageRequestTarget: true }))
+  assert.equal(Object.hasOwn(adapter, 'imageRequestTarget'), false)
+  assert.equal(typeof adapted.prepareCall, 'function')
+  assert.equal(adapted.imageRequestPricing('vision', 'model'), undefined)
+  assert.deepEqual(adapted.imageRequestTarget('vision', 'model', { width: 20, height: 10, bytes: 100 }),
+    { width: 20, height: 10, maxBytes: 100 })
+  const prepared = await adapted.prepareCall('vision', 'model')
+  assert.equal(prepared.model.id, 'model')
+})
+
+test('DSH 0.2.1 imageRequestTarget is scoped to DVR registrations and gated by Host capability', () => {
+  const registered = new Map()
+  const llm = {
+    registerAdapter(providers, adapter) {
+      for (const provider of providers) registered.set(provider, adapter)
+      return () => {}
+    },
+    imageRequestTarget(provider, model, image) {
+      return registered.get(provider).imageRequestTarget(provider, model, image)
+    },
+  }
+  const wrapped = contextWithCoalescedAdapterUpdates({ llm, on() { return () => {} } })
+  wrapped.llm.registerAdapter(['vision-http'], { async *stream() {} })
+  assert.deepEqual(llm.imageRequestTarget('vision-http', 'model', { width: 300, height: 200, bytes: 40_000 }),
+    { width: 300, height: 200, maxBytes: 40_000 })
+  const foreign = { async *stream() {} }
+  llm.registerAdapter(['foreign'], foreign)
+  assert.equal(typeof foreign.imageRequestTarget, 'undefined')
+  assert.throws(() => llm.imageRequestTarget('foreign', 'model', { width: 1, height: 1, bytes: 1 }),
+    /imageRequestTarget is not a function/)
+})

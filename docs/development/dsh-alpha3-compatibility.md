@@ -24,7 +24,7 @@
 - macOS Desktop authenticated Host: token-to-cookie 303, authenticated index 200, missing API 404, DVR RPC 200.
 - macOS bundle recompose: three passes, route stable.
 - Windows Node 24 exact-source/Host-Sharp and upstream build: PASS.
-- macOS Web Settings browser lifecycle: PASS after locally adapting the acceptance selector to the Account menu. That selector change is **not yet included in this branch**.
+- macOS Web Settings browser lifecycle: PASS after locally adapting the acceptance selector to the Account menu. The browser acceptance helper now supports both the legacy Settings button and the newer Account-menu Settings entry, without changing shipped product behavior.
 - macOS cold Vision and mixed-attachment Web smoke could not automate the native directory picker; Linux Chromium remains the authoritative headless gate.
 
 ## Release/merge hold
