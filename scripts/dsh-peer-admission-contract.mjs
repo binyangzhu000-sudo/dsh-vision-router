@@ -24,6 +24,10 @@ assert.ok(
   'DVR manifest must declare at least one DSH Host peer for train admission',
 )
 
+const dshRange = manifest.peerDependencies[declaredDshPeers[0]]
+assert.equal(manifest.engines?.dsh, dshRange)
+assert.ok(declaredDshPeers.every((name) => manifest.peerDependencies[name] === dshRange))
+
 const admitted = [
   // DVR 2.3 supports the 0.1.x line continuously from the first 0.1.5
   // release candidate; later 0.1.x releases are not enumerated exceptions.
@@ -37,6 +41,7 @@ const admitted = [
   '0.2.0-rc.2',
   '0.2.0',
   '0.2.1-alpha.1',
+  '0.2.1-alpha.4',
   '0.2.1-rc.1',
   '0.2.1',
   '0.2.99-rc.1',
@@ -65,9 +70,10 @@ const rejected = [
 for (const runtimeVersion of rejected) {
   const issue = evaluatePluginCompatibility(manifest, {}, runtimeVersion)
   assert.ok(issue, `DVR manifest must not pre-admit DSH ${runtimeVersion}`)
+  if (issue.requirements) assert.deepEqual(issue.requirements, { 'engines.dsh': dshRange })
   assert.deepEqual(
-    Object.keys(issue.peers).sort(),
-    declaredDshPeers,
+    Object.keys(issue.peers ?? issue.requirements).sort(),
+    issue.requirements ? ['engines.dsh'] : declaredDshPeers,
     `DSH ${runtimeVersion} refusal must be caused only by DVR's declared DSH peers`,
   )
 }
