@@ -475,3 +475,14 @@ test('issue #684 recovery wrapper returns stable snapshots through Host rejectio
   assert.equal(ready.status, 'ready')
   assert.equal(ready, wrapped.getSnapshot())
 })
+
+test('Windows CRLF client source still receives the exact root ownership hardening', () => {
+  let html = '<html><head></head><body></body></html>'
+  html = injectClientPresentationBoundary(html)
+  html = injectVisionModelVisibilityBoundary(html)
+  const crlf = html.replaceAll('\n', '\r\n')
+  const hardened = hardenVisionToggleHtml(crlf)
+  assert.match(hardened, /ownership\.sourceFor\(twinProvider\) !== sourceProvider/)
+  assert.match(hardened, /ownership\.sourceFor\(wrapperRoute\) !== VISION_MODE_WRAPPER_SOURCE/)
+  assert.match(hardened, /ownership\.sourceFor\(target\.id\)/)
+})

@@ -30,3 +30,7 @@
 ## Release/merge hold
 
 The exact alpha.3 CI pin is on the compatibility branch. Cross-platform Linux/macOS/Windows GitHub Actions and complete real Web+Chromium acceptance are **not yet green** because the PR has not been created. Do not merge or publish. Keep the public minimum Host range and stable/next verification baselines unchanged.
+
+## Windows CRLF regression (local follow-up)
+
+On a real Windows Node 24 checkout with `core.autocrlf=true`, the pre-existing root-hardening test failed because exact client-source seam replacements assumed LF template literals. A focused source change now matches the same owned seam under CRLF without normalizing unrelated HTML or changing the Host; the original 9-test Windows root-hardening suite passes after rebuilding package artifacts. A new CRLF-specific regression also passes on macOS. Full Windows and Linux CI acceptance is still required before merging.

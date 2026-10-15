@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STUB = path.join(ROOT, 'tests/fixtures/registry-fetch-stub.mjs')
@@ -19,7 +19,7 @@ function runCli(args, { scenario, env = {} } = {}) {
   const outputPath = path.join(dir, 'github-output')
   const result = spawnSync(
     process.execPath,
-    ['--import', STUB, CLI, ...args],
+    ['--import', pathToFileURL(STUB).href, CLI, ...args],
     {
       cwd: ROOT,
       encoding: 'utf8',

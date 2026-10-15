@@ -345,7 +345,15 @@ const CLIENT_PRELUDE = String.raw`(function(){
 })();`
 
 function replaceAll(source, before, after) {
-  return source.includes(before) ? source.split(before).join(after) : source
+  let result = source.includes(before) ? source.split(before).join(after) : source
+  // Windows git checkouts can put CRLF inside injected client-source template
+  // literals. Match only the same owned seam with CRLF; do not normalize or
+  // rewrite the surrounding HTML or any unrelated plugin's source.
+  if (before.includes('\n')) {
+    const windowsBefore = before.replaceAll('\n', '\r\n')
+    if (result.includes(windowsBefore)) result = result.split(windowsBefore).join(after)
+  }
+  return result
 }
 
 export function hardenVisionClientSource(source) {
