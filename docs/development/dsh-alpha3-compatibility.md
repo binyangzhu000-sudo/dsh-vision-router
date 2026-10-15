@@ -29,7 +29,7 @@
 
 ## Release/merge hold
 
-The exact alpha.3 CI pin is on the compatibility branch. Cross-platform Linux/macOS/Windows GitHub Actions and complete real Web+Chromium acceptance are **not yet green** because the PR has not been created. Do not merge or publish. Keep the public minimum Host range and stable/next verification baselines unchanged.
+The exact alpha.3 CI pin and repairs are reviewed through [PR #710](https://github.com/ysr666/dsh-vision-router/pull/710). Merge only after the PR cross-platform Linux/macOS/Windows exact-source/Host-Sharp, Windows Node 22/24, real Web+Chromium lifecycle, and related contract/adversarial gates pass on the final head. This compatibility PR does not authorize publishing. Keep the public minimum Host range and stable/next verification baselines unchanged.
 
 ## Windows CRLF regression (local follow-up)
 
