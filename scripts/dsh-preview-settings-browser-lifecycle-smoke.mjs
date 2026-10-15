@@ -77,8 +77,16 @@ async function dismissFirstRunOverlays(page) {
 
 async function openVisionRouterSettings(page) {
   const settings = page.getByRole('button', { name: 'Settings', exact: true })
-  await settings.waitFor({ state: 'visible', timeout: 30_000 })
-  await settings.click()
+  if (await settings.isVisible()) {
+    await settings.click()
+  } else {
+    // Newer DSH Web shells moved Settings into the Account menu. Keep the
+    // older first-class button path for supported legacy Host versions.
+    const accountMenu = page.getByRole('button', { name: /账号菜单|Account menu/i })
+    await accountMenu.waitFor({ state: 'visible', timeout: 30_000 })
+    await accountMenu.click()
+    await page.getByRole('menuitem', { name: /设置|Settings/i }).first().click()
+  }
 
   const dialog = page.getByRole('dialog', { name: 'Settings' })
   await dialog.waitFor({ state: 'visible', timeout: 15_000 })
