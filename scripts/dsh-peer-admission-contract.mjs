@@ -24,9 +24,14 @@ assert.ok(
   'DVR manifest must declare at least one DSH Host peer for train admission',
 )
 
-const dshRange = manifest.peerDependencies[declaredDshPeers[0]]
-assert.equal(manifest.engines?.dsh, dshRange)
-assert.ok(declaredDshPeers.every((name) => manifest.peerDependencies[name] === dshRange))
+const declaredDshRanges = new Set(declaredDshPeers.map((name) => manifest.peerDependencies[name]))
+assert.equal(declaredDshRanges.size, 1, 'DSH peers must agree on one support window')
+const declaredDshRange = [...declaredDshRanges][0]
+assert.equal(
+  manifest.engines?.dsh,
+  declaredDshRange,
+  'engines.dsh and legacy DSH peers must preserve the same public support window',
+)
 
 const admitted = [
   // DVR 2.3 supports the 0.1.x line continuously from the first 0.1.5
@@ -70,12 +75,23 @@ const rejected = [
 for (const runtimeVersion of rejected) {
   const issue = evaluatePluginCompatibility(manifest, {}, runtimeVersion)
   assert.ok(issue, `DVR manifest must not pre-admit DSH ${runtimeVersion}`)
-  if (issue.requirements) assert.deepEqual(issue.requirements, { 'engines.dsh': dshRange })
-  assert.deepEqual(
-    Object.keys(issue.peers ?? issue.requirements).sort(),
-    issue.requirements ? ['engines.dsh'] : declaredDshPeers,
-    `DSH ${runtimeVersion} refusal must be caused only by DVR's declared DSH peers`,
-  )
+  // DSH alpha.4 uses engines.dsh as the sole canonical admission requirement.
+  // Older supported Hosts still report individual DSH peer mismatches.
+  // Test the real evaluator's refusal shape instead of coupling to one generation.
+  const engineRequirements = issue.requirements
+  if (engineRequirements !== undefined) {
+    assert.deepEqual(
+      engineRequirements,
+      { 'engines.dsh': declaredDshRange },
+      `DSH ${runtimeVersion} must reject only the declared engines.dsh window`,
+    )
+  } else {
+    assert.deepEqual(
+      Object.keys(issue.peers).sort(),
+      declaredDshPeers,
+      `DSH ${runtimeVersion} refusal must be caused only by DVR's declared DSH peers`,
+    )
+  }
 }
 
 console.log(JSON.stringify({
