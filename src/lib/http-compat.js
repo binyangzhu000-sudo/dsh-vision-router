@@ -110,6 +110,9 @@ export function parseMaxTokensLimit(detail) {
     return undefined
   }
   const patterns = [
+    // Two-sided English ranges must use the upper bound, not the first number.
+    // The generic max_tokens fallback below would otherwise parse the lower bound.
+    /(?:max(?:_completion)?[_ -]?tokens?)[^\d\n]{0,48}(?:between|from|(?:in|within)(?:\s+the)?(?:\s+(?:valid|allowed))?(?:\s+range)?)[^\d\n]{0,12}\d+\s*(?:,|and|to|[-–—])\s*(\d+)/i,
     /(?:限制数值范围|range)\s*[\[(]\s*\d+\s*,\s*(\d+)\s*[\])]/i,
     /(?:less than or equal to|at most|maximum(?: allowed)?|max(?:imum)?(?: value)?|<=)\D{0,24}(\d+)/i,
     /(?:上限|最大(?:值|输出)?)[^\d]{0,16}(\d+)/i,

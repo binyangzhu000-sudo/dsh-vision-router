@@ -90,6 +90,11 @@ test('max-token limit parser recognizes Zhipu and common English errors', () => 
     parseMaxTokensLimit('max_tokens must be less than or equal to 2048'),
     2048,
   )
+  // Regression: the older fallback extracted the lower bound (1), not the cap.
+  assert.equal(parseMaxTokensLimit('max_tokens must be between 1 and 1024'), 1024)
+  assert.equal(parseMaxTokensLimit('max_tokens must be in [1, 2048]'), 2048)
+  assert.equal(parseMaxTokensLimit('max_completion_tokens should be in the range [1, 3072]'), 3072)
+  assert.equal(parseMaxTokensLimit('max_tokens must be from 1 to 512'), 512)
   assert.equal(parseMaxTokensLimit('temperature 参数非法：限制数值范围[0,2]'), undefined)
   assert.equal(parseMaxTokensLimit('unrelated HTTP 400 code 1210'), undefined)
 })
@@ -129,6 +134,39 @@ test('compat fetch retries once at a server-advertised max_tokens ceiling', asyn
   assert.equal(bodies.length, 2)
   assert.equal(bodies[0].max_tokens, 4096)
   assert.equal(bodies[1].max_tokens, 1536)
+})
+
+test('compat fetch retries at the upper end of a 400 two-sided token range', async () => {
+  const bodies = []
+  const fetchImpl = async (_url, init) => {
+    bodies.push(JSON.parse(init.body))
+    if (bodies.length === 1) {
+      return new Response(JSON.stringify({ error: { message: 'max_tokens must be between 1 and 1024' } }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+  const response = await fetchWithOpenAICompatibility(
+    fetchImpl,
+    'https://example.test/v1/chat/completions',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        model: 'unknown-vl',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'describe' }] }],
+        max_tokens: 4096,
+        stream: false,
+      }),
+    },
+    { active: true },
+  )
+  assert.equal(response.status, 200)
+  assert.deepEqual(bodies.map((body) => body.max_tokens), [4096, 1024])
 })
 
 test('compat fetch applies the GLM preset before the first network attempt', async () => {
