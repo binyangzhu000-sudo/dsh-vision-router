@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ysr666/dsh-vision-router/releases/tag/v2.3.0"><img src="https://img.shields.io/badge/release-v2.3.0-5B4CF0?style=flat-square" alt="Release v2.3.0" /></a>
+  <a href="https://github.com/ysr666/dsh-vision-router/releases/latest"><img src="https://img.shields.io/github/v/release/ysr666/dsh-vision-router?label=release&color=5B4CF0&style=flat-square" alt="Latest stable release" /></a>
   <a href="tests"><img src="https://img.shields.io/badge/verified-Node%2022%20%2B%2024-2EA44F?style=flat-square" alt="已验证 Node 22 + 24" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat-square" alt="MIT 许可证" /></a>
   <a href="package.json"><img src="https://img.shields.io/badge/Node.js-%3E%3D22-339933?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white" alt="Node.js >=22" /></a>
@@ -44,13 +44,12 @@
 > **默认配置会让数据出网。** 使用云端视觉模型时，Vision Router 会将图片（或由它裁剪出的局部）、识图提示词及相关请求元数据发送给对应供应商。新安装默认开启 OVHcloud 匿名视觉兜底，因此“免费”和“免 Key”不等于离线。涉密、涉案、内部或其他受限材料请勿使用云端链路。详见[数据流向与严格纯本地配置](#数据流向与严格纯本地配置)。
 
 > [!WARNING]
-> 📌 **公告（v3.0.3）**
+> 📌 **公告（v3.0.4）**
 >
-> **v3.0.3：修正图片呈现与代理边界。** 恢复历史会话和空的 `vision_present` 结果不再抢走滚动位置，
-> 新生成的图片仍会在新版 phase 生命周期与受支持的 DSH 0.1.5 旧生命周期上正确聚焦；
-> cookie-domain 风格的 `.example.com` 现在与 `*.example.com` 遵守同一套代理主机规则；
-> DSH 0.1.7 精确浏览器 smoke 也重新跟随两个 presentation-boundary owner。CI Action 固定版本同步更新，
-> 运行时依赖和 Host 支持范围均不变。[查看完整更新 →](docs/releases/v3.0.3.md)
+> **v3.0.4：DSH alpha.5 兼容验证与发布门禁加固。** 已通过 `0.2.1-alpha.5` 的
+> 精确源码、三平台 Host 与真实 Chromium 验收，并更新 CI Action 固定 SHA。
+> 原有 DSH Host 最低支持范围保持不变；`0.2.1-rc.1` 待正式发布后另行验收。
+> [查看完整更新 →](docs/releases/v3.0.4.md)
 
 <p align="center">
   <img src="assets/vision-demo.gif" width="640" alt="演示：粘贴图片，Agent 用 vision_ground / vision_crop / vision_pixel_diff 定位发送按钮并给出坐标" />
