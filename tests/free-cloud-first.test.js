@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { orderedHttpProviders, DEFAULT_HTTP_PROVIDERS } from '../index.js'
 
 // freeCloudFirst：云端免费优先链（纯顺序变化，默认关）。
-// 开时：内置 OVH 免费 5 模型在前（按内置表大→小稳定序），付费端点在后兜底。
+// 开时：内置 OVH 免费 4 模型在前（按内置表大→小稳定序），付费端点在后兜底。
 
 const PAID = [
   { name: 'zhipu', baseURL: 'https://api.zhipu.test/v1', model: 'glm-4.6v', apiKeyEnv: 'ZHIPU_KEY' },
@@ -15,7 +15,7 @@ test('freeCloudFirst: built-in free tier comes first, paid providers fall back b
   const ordered = orderedHttpProviders(config, true)
   const free = ordered.slice(0, DEFAULT_HTTP_PROVIDERS.length)
   const rest = ordered.slice(DEFAULT_HTTP_PROVIDERS.length)
-  // Free tier first, exactly the built-in five, in the built-in order.
+  // Free tier first, exactly the remaining built-in four, in the built-in order.
   assert.deepEqual(
     free.map((p) => `${p.name}/${p.model}`),
     DEFAULT_HTTP_PROVIDERS.map((p) => `${p.name}/${p.model}`),
@@ -60,17 +60,16 @@ test('freeCloudFirst: paid rows with a key never shadow the built-in free entry'
     'ovh/Qwen3.5-397B-A17B',
     'ovh/Qwen2.5-VL-72B-Instruct',
     'ovh/Qwen3.6-27B',
-    'ovh/Mistral-Small-3.2-24B-Instruct-2506',
     'ovh/Qwen3.5-9B',
     'ovh/Qwen3.5-397B-A17B',
   ])
   assert.equal(ordered[0].apiKeyEnv, '')
-  assert.equal(ordered[5].apiKeyEnv, 'OVH_KEY')
+  assert.equal(ordered[DEFAULT_HTTP_PROVIDERS.length].apiKeyEnv, 'OVH_KEY')
 })
 
 test('freeCloudFirst: keyed row does not suppress the free tier when it matches a built-in model', () => {
   // Regression guard for the maintainer review: with a keyed OVH row present,
-  // the free tier must stay complete (all five built-in keyless models) and
+  // the free tier must stay complete (all four built-in keyless models) and
   // the keyed row must come after, never instead of, the keyless entry.
   const paidOvh = [
     { name: 'ovh', baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', model: 'Qwen3.5-397B-A17B', apiKeyEnv: 'OVH_KEY' },
@@ -84,4 +83,19 @@ test('freeCloudFirst: keyed row does not suppress the free tier when it matches 
   )
   assert.equal(freeBlock.every((p) => p.apiKeyEnv === ''), true)
   assert.equal(ordered[DEFAULT_HTTP_PROVIDERS.length].apiKeyEnv, 'OVH_KEY')
+})
+
+// A user-owned configuration is intentionally not rewritten or suppressed,
+// even if OVH has announced that this model will eventually return 404.
+test('freeCloudFirst: explicitly configured retiring OVH model remains user-owned', () => {
+  const configured = {
+    name: 'ovh',
+    baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1',
+    model: 'Mistral-Small-3.2-24B-Instruct-2506',
+    apiKeyEnv: '',
+  }
+  const ordered = orderedHttpProviders({ httpProviders: [configured] }, true)
+  assert.deepEqual(ordered.slice(0, DEFAULT_HTTP_PROVIDERS.length), DEFAULT_HTTP_PROVIDERS)
+  assert.deepEqual(ordered.slice(DEFAULT_HTTP_PROVIDERS.length), [configured])
+  assert.deepEqual(orderedHttpProviders({ httpProviders: [configured] }, false)[0], configured)
 })

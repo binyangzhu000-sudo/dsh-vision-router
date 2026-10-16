@@ -3178,10 +3178,12 @@ test('built-in OVH anonymous fallback is largest-first across independent model 
     'Qwen3.5-397B-A17B',
     'Qwen2.5-VL-72B-Instruct',
     'Qwen3.6-27B',
-    'Mistral-Small-3.2-24B-Instruct-2506',
     'Qwen3.5-9B',
   ])
   assert.ok(DEFAULT_HTTP_PROVIDERS.every((provider) => provider.apiKeyEnv === ''))
+  // OVH announced this model's retirement for 2026-11-04. It must no longer
+  // be added implicitly to anonymous fallback attempts (#717).
+  assert.equal(DEFAULT_HTTP_PROVIDERS.some((provider) => provider.model === 'Mistral-Small-3.2-24B-Instruct-2506'), false)
 })
 
 test('anonymous OVH 429 surfaces immediately so the next model can run', async () => {

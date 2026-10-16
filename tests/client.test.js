@@ -1498,3 +1498,13 @@ test('a presented image card brings itself into view instead of waiting to be sc
   assert.equal(bundle.includes("focusState.current, next, images.length"), true)
   assert.equal(bundle.includes("'data-dvr-present': 'true'"), true)
 })
+
+
+test('built-in OVH fallback UI uses actual model count and per-model RPM', () => {
+  const client = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  assert.ok(client.includes('totalRpm: count * perModelRpm'))
+  assert.ok(client.includes('count, primary, perModelRpm, totalRpm'))
+  assert.ok(client.includes('list.length > 0 ? list.length : 4'))
+  assert.equal(client.includes('five independent model buckets'), false)
+  assert.equal(client.includes('5 个模型独立限额'), false)
+})

@@ -249,7 +249,7 @@ openLogFolder,
       builtinFallbackLabel: '内置免费兜底（自动）',
       builtinFallbackEnabled: '已启用',
       builtinFallbackDisabled: '已关闭',
-      builtinFallbackBody: 'OVHcloud 匿名视觉链共 {count} 个模型，首选 {primary}。匿名限额为每 IP、每模型 2 次/分钟；5 个模型独立限额，理论合计约 10 次/分钟，实际以 OVH 限流为准。它固定在上面用户模型之后尝试，免注册、免 Key。',
+      builtinFallbackBody: 'OVHcloud 匿名视觉链共 {count} 个模型，首选 {primary}。匿名限额为每 IP、每模型 {perModelRpm} 次/分钟；{count} 个模型独立限额，理论合计约 {totalRpm} 次/分钟，实际以 OVH 限流为准。它固定在上面用户模型之后尝试，免注册、免 Key。',
       chainLabel: '识图模型',
       chainHint: '选择 Vision Router 用来读取图片的模型。将按从上到下的顺序尝试，失败时自动切换到下一个。',
       addFallback: '+ 添加备用识图模型',
@@ -535,7 +535,7 @@ openLogFolder,
       builtinFallbackLabel: 'Built-in free fallback (automatic)',
       builtinFallbackEnabled: 'Enabled',
       builtinFallbackDisabled: 'Disabled',
-      builtinFallbackBody: 'The anonymous OVHcloud vision chain contains {count} models, starting with {primary}. Anonymous limits are 2 requests/minute per IP per model; five independent model buckets are about 10 RPM in theory, subject to OVH rate limiting. It always runs after your user models and needs no signup or API key.',
+      builtinFallbackBody: 'The anonymous OVHcloud vision chain contains {count} models, starting with {primary}. Anonymous limits are {perModelRpm} requests/minute per IP per model; {count} independent model buckets are about {totalRpm} RPM in theory, subject to OVH rate limiting. It always runs after your user models and needs no signup or API key.',
       chainLabel: 'Vision model',
       chainHint: 'Choose the models Vision Router uses to read images. They are tried from top to bottom, with automatic failover.',
       addFallback: '+ Add fallback vision model',
@@ -3932,13 +3932,16 @@ openLogFolder,
         const list = Array.isArray(visionCaps.builtinFallback) ? visionCaps.builtinFallback : []
         const enabled = format('freeFallback') !== false
         const primary = list[0] && list[0].model ? list[0].model : 'Qwen3.5-397B-A17B'
-        const count = list.length > 0 ? list.length : 5
+        const count = list.length > 0 ? list.length : 4
+        const perModelRpm = Number.isFinite(visionCaps.anonymousRpmPerModel)
+          ? Math.max(0, visionCaps.anonymousRpmPerModel)
+          : 2
         return h('div', { className: 'vr-field' },
           h('div', { className: 'vr-field-head' },
             h('span', { className: 'vr-label' }, t('builtinFallbackLabel')),
             h('span', { className: 'vr-badge' }, enabled ? t('builtinFallbackEnabled') : t('builtinFallbackDisabled')),
           ),
-          h('p', { className: 'vr-hint' }, t('builtinFallbackBody', { count, primary })),
+          h('p', { className: 'vr-hint' }, t('builtinFallbackBody', { count, primary, perModelRpm, totalRpm: count * perModelRpm })),
         )
       }
       const textProviderEditor = () => {
