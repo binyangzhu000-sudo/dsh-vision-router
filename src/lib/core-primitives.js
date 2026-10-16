@@ -1778,12 +1778,12 @@ export async function downscaleImage(bytes, maxPixels, options = {}) {
  */
 export const DEFAULT_HTTP_PROVIDERS = [
   // OVHcloud anonymous quota is per IP AND per model. Keep the free chain
-  // ordered largest -> smallest so quality wins first. A 429 on one model can
+  // ordered by preferred quality so quality wins first. Retired models are
+  // removed from this implicit chain; explicit user rows are never rewritten. A 429 on one model can
   // immediately fall through to the next model's independent anonymous bucket.
   { name: 'ovh', baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', model: 'Qwen3.5-397B-A17B', apiKeyEnv: '', maxTokens: 4096 },
   { name: 'ovh', baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', model: 'Qwen2.5-VL-72B-Instruct', apiKeyEnv: '', maxTokens: 4096 },
   { name: 'ovh', baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', model: 'Qwen3.6-27B', apiKeyEnv: '', maxTokens: 4096 },
-  { name: 'ovh', baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', model: 'Mistral-Small-3.2-24B-Instruct-2506', apiKeyEnv: '', maxTokens: 4096 },
   { name: 'ovh', baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', model: 'Qwen3.5-9B', apiKeyEnv: '', maxTokens: 4096 },
 ]
 
