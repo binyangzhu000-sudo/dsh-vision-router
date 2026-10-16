@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ysr666/dsh-vision-router/releases/tag/v2.3.0"><img src="https://img.shields.io/badge/release-v2.3.0-5B4CF0?style=flat-square" alt="Release v2.3.0" /></a>
+  <a href="https://github.com/ysr666/dsh-vision-router/releases/latest"><img src="https://img.shields.io/github/v/release/ysr666/dsh-vision-router?label=release&color=5B4CF0&style=flat-square" alt="Latest stable release" /></a>
   <a href="tests"><img src="https://img.shields.io/badge/verified-Node%2022%20%2B%2024-2EA44F?style=flat-square" alt="Verified: Node 22 + 24" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat-square" alt="License: MIT" /></a>
   <a href="package.json"><img src="https://img.shields.io/badge/Node.js-%3E%3D22-339933?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white" alt="Node.js >=22" /></a>
