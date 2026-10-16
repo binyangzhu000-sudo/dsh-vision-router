@@ -5,6 +5,21 @@ Bilingual (Chinese + English) release notes for every version — the GitHub Rel
 
 ## Unreleased
 
+## v3.0.4
+
+### DSH 0.2.1-alpha.5 validation / DSH 0.2.1-alpha.5 验收
+
+- Exact Host qualification on upstream `1517a4dbca0a2789ff1d41ba439600f8547d23fa` (#713): Node 22/24, Windows/macOS/Linux Host-Sharp, native Desktop, real Web+Chromium Vision/mixed attachments/Settings save–reload–readback/bundle recompose and adversarial regression.
+- 固定精确上游 commit，完成 Node 22/24、三系统 Host-Sharp、Desktop 和真实 Chromium 识图、混合附件、设置持久化与 bundle 重组验收；旧 Host 范围及行为保持不变。
+- `0.2.1-rc.1` 尚未正式发布，发布后需要对精确源码和真实 Host 另做验收，不能提前宣称已验证。
+
+### Release and CI maintenance / 发布与 CI 维护
+
+- Consolidate Dependabot #705–#709: pin setup-node 7.1.0, upload-artifact 7.0.2, Scorecard 2.5.0, CodeQL upload-sarif 4.38.3 and HOL scanner Action 1.2.786. Fix #705's hard-coded `v7.0.1` release-package contract to match the new immutable artifact Action pin.
+- 合并依赖 Action 更新并修正发布前工件身份测试的固定版本断言；继续要求精确构建、同一 tarball、OIDC 与来源证明，不放宽发布门禁。
+- No production routing, runtime dependency, public API, Session format, Settings schema or Host-floor changes. No automatic package publication.
+
+
 ## v3.0.3
 
 ### 图片呈现生命周期修正 / Presented-image lifecycle correction

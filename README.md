@@ -44,15 +44,12 @@
 > **Data leaves your machine by default.** When a cloud vision model is used, Vision Router sends the image (or a derived crop), the vision prompt and related request metadata to that provider. A fresh install has an anonymous OVHcloud vision fallback enabled, so "free" and "no key" do **not** mean offline. Do not use the cloud chain for confidential, regulated or classified material. See [Data flow and strict local-only use](#data-flow-and-strict-local-only-use).
 
 > [!WARNING]
-> 📌 **Announcement (v3.0.3)**
+> 📌 **Announcement (v3.0.4)**
 >
-> **v3.0.3: presentation and proxy-boundary corrections.** Restored history and empty
-> `vision_present` results no longer steal the reader’s scroll position, while fresh presented
-> images still focus correctly on both the newer phase-based Host contract and the supported DSH
-> 0.1.5 lifecycle. Cookie-domain-style `.example.com` entries now follow the same proxy-host
-> policy as `*.example.com`, and the exact DSH 0.1.7 browser smoke again follows both
-> presentation-boundary owners. CI action pins were also refreshed; runtime dependencies and
-> supported Hosts are unchanged. [What’s new →](docs/releases/v3.0.3.md)
+> **v3.0.4: DSH alpha.5 verification and release hardening.** Exact Host/Chromium
+> gates passed for DSH `0.2.1-alpha.5`; CI supply-chain actions were refreshed.
+> The public DSH support range stays unchanged. Future `0.2.1-rc.1` is not
+> yet independently verified. [What’s new →](docs/releases/v3.0.4.md)
 
 <p align="center">
   <img src="assets/vision-demo.gif" width="640" alt="Demo: paste an image, the agent locates the send button with vision_ground / vision_crop / vision_pixel_diff and answers with coordinates" />
