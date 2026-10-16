@@ -281,6 +281,24 @@ if (v4Admission) {
   )
 }
 
+// 8. Alpha.5 adds a non-interactive model-label Slot alongside (not in
+// replacement of) the existing composer model seat. DVR's Vision toggle is
+// registered on conversation.input.right; preserve both owner-managed seams.
+// The new skill cache invalidation must also listen to plugin-manager changes.
+// These are exact upstream source assertions, not substitutes for real Chromium.
+if (expectedVersion === '0.2.1-alpha.5') {
+  const [labelSlot, modelSelect, skillsClient, terminalInventory] = await Promise.all([
+    readFile(path.join(dshRoot, 'packages/client/ui-model-selection/src/client/slots.ts'), 'utf8'),
+    readFile(path.join(dshRoot, 'packages/client/ui-model-selection/src/client/ModelSelect.tsx'), 'utf8'),
+    readFile(path.join(dshRoot, 'packages/client/ui-skill/src/client/index.ts'), 'utf8'),
+    readFile(path.join(dshRoot, 'packages/api/terminal-controller/src/client/inventory.ts'), 'utf8'),
+  ])
+  assert.match(labelSlot, /'conversation\.input\.model\.label':\s*\{[\s\S]*?kind:\s*'single'[\s\S]*?scope:\s*'session'[\s\S]*?inline:\s*true/)
+  assert.match(modelSelect, /renderSlot\('conversation\.input\.model\.label',\s*\{/)
+  assert.match(skillsClient, /ctx\.remote\.\$on\('plugin-manager\/changed',\s*clearAll\)/)
+  assert.match(terminalInventory, /class TerminalInventory/)
+}
+
 console.log(JSON.stringify({
   ok: true,
   dsh: expectedVersion,
