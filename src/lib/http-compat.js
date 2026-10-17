@@ -1,6 +1,9 @@
 
 const GLM_4V_FLASH = /^glm-4v-flash(?:$|[-_.])/i
 export const DEFAULT_HTTP_ERROR_DETAIL_MAX_BYTES = 64 * 1024
+// OVHcloud documents a 10 MB total request-body cap for VLM endpoints.
+// Count actual serialized UTF-8 JSON, not image pixels or pre-base64 bytes.
+export const OVH_VLM_MAX_JSON_BYTES = 10_000_000
 
 /**
  * Known OpenAI-compatible transport quirks. Rules are intentionally sparse:
@@ -309,7 +312,32 @@ export async function fetchWithOpenAICompatibility(fetchImpl, input, init, conte
     prompt: context.prompt,
   })
   let requestBody = prepared.body
-  let response = await requestFetch(input, { ...init, body: JSON.stringify(requestBody) })
+  // The official OVH VLM API caps the *whole HTTP JSON body* at 10 MB.
+  // An image under downscaleMaxPixels can still exceed this after base64,
+  // and several smaller images can exceed it together. Refuse the doomed
+  // request before network egress; never silently degrade OCR quality or
+  // apply this vendor-specific limit to a user's other HTTP providers.
+  const ovhUrl = asUrl(url)
+  const isOfficialOvhVlm = ovhUrl?.protocol === 'https:' &&
+    ovhUrl.hostname === 'oai.endpoints.kepler.ai.cloud.ovh.net' &&
+    ovhUrl.port === ''
+  const serializeWireBody = (body) => {
+    const wire = JSON.stringify(body)
+    if (isOfficialOvhVlm && Array.isArray(body.messages) &&
+        body.messages.some((message) => Array.isArray(message?.content) &&
+          message.content.some((block) => block?.type === 'image_url'))) {
+      const bytes = Buffer.byteLength(wire, 'utf8')
+      if (bytes > OVH_VLM_MAX_JSON_BYTES) {
+        const error = new Error(
+          `OVHcloud VLM request is ${bytes} bytes, above its 10 MB JSON payload limit; reduce the image file size or image count before retrying`,
+        )
+        error.code = 'INVALID_REQUEST'
+        throw error
+      }
+    }
+    return wire
+  }
+  let response = await requestFetch(input, { ...init, body: serializeWireBody(requestBody) })
 
   for (let correction = 0; correction < 2; correction++) {
     if (response.ok || (response.status !== 400 && response.status !== 422)) return response
@@ -326,7 +354,7 @@ export async function fetchWithOpenAICompatibility(fetchImpl, input, init, conte
     }
 
     requestBody = retryBody
-    response = await requestFetch(input, { ...init, body: JSON.stringify(requestBody) })
+    response = await requestFetch(input, { ...init, body: serializeWireBody(requestBody) })
   }
 
   return response
