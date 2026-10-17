@@ -134,6 +134,7 @@ jobs:
           DSH_SOURCE_ROOT: ${{ github.workspace }}/dsh-021-rc1
           DSH_EXPECTED_VERSION: 0.2.1-rc.1
           DSH_EXPECTED_COMMIT: 1600d8a1e140dcde43a1a0941940a0480712c011
+          DSH_EXPECTED_PNPM: '11.28.5'
         run: pnpm exec tsx ../dvr/scripts/dsh-alpha-source-contract.mjs
       - name: Verify 0.2 train peer admission with official Host evaluator
         working-directory: dsh-021-rc1
