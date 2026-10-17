@@ -5,6 +5,29 @@ Bilingual (Chinese + English) release notes for every version — the GitHub Rel
 
 ## Unreleased
 
+## v3.0.5
+
+### Critical clean-profile activation fix / 修复可选依赖导致的启动故障
+
+- Fix #719: remove two unused eager imports of optional DSH peers that could make DVR 3.0.4 fail with `ERR_MODULE_NOT_FOUND` during module load, preventing Desktop activation. Original contribution from @m4ku1337 (#720), integrated through #722 with isolated activation-entry, missing-peer and negative-control tests.
+- 修复 #719：删除两条未使用的可选 DSH 依赖顶层导入，避免正常未安装可选依赖的用户在加载插件时遭遇 `ERR_MODULE_NOT_FOUND`，甚至阻断 Desktop 启动。原始贡献来自 @m4ku1337（#720），经 #722 完整 CI 验收后合并。
+
+### OVH vision request safety / OVH 视觉请求体保护
+
+- #723 enforces the official OVHcloud VLM **10 MB total JSON request** limit on the final outgoing wire, rejecting oversized image batches locally with `INVALID_REQUEST`, without image quality loss or changing other vendors.
+- #723 在向官方 OVHcloud 视觉端点发送前校验最终 JSON 请求总体积，超出 10 MB 时安全拒绝，不暗中降低图片质量，不修改其他供应商请求。这是针对潜在 413 的保护，**不代表** #716 所报告的 HTTP 400 已解决。
+
+### DSH 0.2.1-rc.1 acceptance / 精确源码与真实 Host 兼容验收
+
+- #721 pins upstream `dsh-v0.2.1-rc.1@1600d8a1e140dcde43a1a0941940a0480712c011` and qualifies actual Host, Windows/macOS/Linux exact source, Node 22/24 Desktop, Chromium Vision, mixed attachments, Settings round trip and bundle recomposition.
+- #721 验证 DSH 0.2.1-rc.1 精确上游源码及真实 Host、三平台 Desktop、浏览器识图、混合附件、设置读写与重组；不引入猜测性适配，也不抬高 Host 支持下限。
+
+### Compatibility, known limits and release / 兼容窗口与发布说明
+
+- No Settings migration, Session format, public API, Host auth/service injection or minimum supported DSH/Node changes. Release candidate must pass its own CI, packed-artifact and trusted publish gates.
+- 无配置迁移或 Session 格式变化。历史 Windows Vision 开关偶发问题 #684、billion-context 共存问题 #704，以及多供应商 HTTP 400 #716 仍待独立复现，不能宣称已修复。安装器锁冲突 #703 属于上游问题。
+- See `docs/releases/v3.0.5.md` and `docs/development/v305-real-scenario-acceptance.md`. This documentation does not imply a published npm version.
+
 ## v3.0.4
 
 ### DSH 0.2.1-alpha.5 validation / DSH 0.2.1-alpha.5 验收
