@@ -404,3 +404,58 @@ test('batch3: bounded HTTP body reader counts streamed bytes and declared length
     (error) => error && error.code === 'HTTP_RESPONSE_TOO_LARGE',
   )
 })
+
+test('OVH VLM total JSON byte budget blocks oversized image bodies before provider egress (#716)', async () => {
+  const ovh = 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions'
+  const calls = []
+  const fakeFetch = async (url, init) => {
+    calls.push({ url: String(url), size: Buffer.byteLength(init.body, 'utf8') })
+    return new Response('{}', { status: 200 })
+  }
+  const request = (base64Images, text = 'Look') => ({
+    method: 'POST',
+    body: JSON.stringify({
+      model: 'Qwen3.5-397B-A17B',
+      max_tokens: 64,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text },
+          ...base64Images.map((base64) => ({
+            type: 'image_url',
+            image_url: { url: 'data:image/png;base64,' + base64 },
+          })),
+        ],
+      }],
+    }),
+  })
+  const large = 'A'.repeat(10_000_000)
+  const assertBlocked = async (images, text) => {
+    const before = calls.length
+    await assert.rejects(
+      fetchWithOpenAICompatibility(fakeFetch, ovh, request(images, text), { active: true }),
+      (error) => {
+        assert.equal(error.code, 'INVALID_REQUEST')
+        assert.match(error.message, /OVHcloud VLM request is \d+ bytes/)
+        assert.match(error.message, /10 MB JSON payload limit/)
+        assert.equal(error.message.includes('data:image/'), false, 'no private image bytes in diagnosis')
+        return true
+      },
+    )
+    assert.equal(calls.length, before, 'oversized request must never consume a network attempt')
+  }
+  await assertBlocked([large])
+  await assertBlocked(['A'.repeat(6_000_000), 'A'.repeat(6_000_000)])
+  // A small image is sent verbatim and no quality or metadata is rewritten.
+  const small = request(['AA=='], '中文识别')
+  const ok = await fetchWithOpenAICompatibility(fakeFetch, ovh, small, { active: true })
+  assert.equal(ok.ok, true)
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].size, Buffer.byteLength(small.body, 'utf8'))
+  // No accidental hostname-suffix match; unrelated providers retain their wire.
+  await fetchWithOpenAICompatibility(fakeFetch, 'https://oai.endpoints.kepler.ai.cloud.ovh.net.evil.example/v1/chat/completions',
+    request([large]), { active: true })
+  await fetchWithOpenAICompatibility(fakeFetch, 'https://user-vision.example/v1/chat/completions',
+    request([large]), { active: true })
+  assert.equal(calls.length, 3)
+})
