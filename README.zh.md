@@ -44,12 +44,14 @@
 > **默认配置会让数据出网。** 使用云端视觉模型时，Vision Router 会将图片（或由它裁剪出的局部）、识图提示词及相关请求元数据发送给对应供应商。新安装默认开启 OVHcloud 匿名视觉兜底，因此“免费”和“免 Key”不等于离线。涉密、涉案、内部或其他受限材料请勿使用云端链路。详见[数据流向与严格纯本地配置](#数据流向与严格纯本地配置)。
 
 > [!WARNING]
-> 📌 **公告（v3.0.4）**
+> 📌 **公告（v3.0.5）**
 >
-> **v3.0.4：DSH alpha.5 兼容验证与发布门禁加固。** 已通过 `0.2.1-alpha.5` 的
-> 精确源码、三平台 Host 与真实 Chromium 验收，并更新 CI Action 固定 SHA。
-> 原有 DSH Host 最低支持范围保持不变；`0.2.1-rc.1` 待正式发布后另行验收。
-> [查看完整更新 →](docs/releases/v3.0.4.md)
+> **v3.0.5 修正补丁：** 未安装可选 DSH 依赖不再导致 Desktop 加载失败
+> （#719/#722，感谢 @m4ku1337）。官方 OVHcloud 视觉请求发送前会校验
+> 10 MB 的完整 JSON 请求体上限（#723）；DSH `0.2.1-rc.1` 已通过
+> 精确源码、真实 Host 和 Chromium 兼容验收（#721）。最低 Host 支持
+> 范围不变；#684/#704/#716 仍在跟进中。
+> [查看完整更新 →](docs/releases/v3.0.5.md)
 
 <p align="center">
   <img src="assets/vision-demo.gif" width="640" alt="演示：粘贴图片，Agent 用 vision_ground / vision_crop / vision_pixel_diff 定位发送按钮并给出坐标" />

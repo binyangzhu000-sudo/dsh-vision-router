@@ -44,12 +44,14 @@
 > **Data leaves your machine by default.** When a cloud vision model is used, Vision Router sends the image (or a derived crop), the vision prompt and related request metadata to that provider. A fresh install has an anonymous OVHcloud vision fallback enabled, so "free" and "no key" do **not** mean offline. Do not use the cloud chain for confidential, regulated or classified material. See [Data flow and strict local-only use](#data-flow-and-strict-local-only-use).
 
 > [!WARNING]
-> 📌 **Announcement (v3.0.4)**
+> 📌 **Announcement (v3.0.5)**
 >
-> **v3.0.4: DSH alpha.5 verification and release hardening.** Exact Host/Chromium
-> gates passed for DSH `0.2.1-alpha.5`; CI supply-chain actions were refreshed.
-> The public DSH support range stays unchanged. Future `0.2.1-rc.1` is not
-> yet independently verified. [What’s new →](docs/releases/v3.0.4.md)
+> **v3.0.5 corrective patch:** optional DSH peers no longer block clean Desktop
+> activation (#719/#722, thanks @m4ku1337). The official OVHcloud VLM wire
+> now checks its 10 MB JSON body limit before sending (#723); DSH
+> `0.2.1-rc.1` has passed pinned real Host and Chromium qualification (#721).
+> Host support range is unchanged. Historical #684/#704/#716 remain tracked.
+> [Release details →](docs/releases/v3.0.5.md)
 
 <p align="center">
   <img src="assets/vision-demo.gif" width="640" alt="Demo: paste an image, the agent locates the send button with vision_ground / vision_crop / vision_pixel_diff and answers with coordinates" />
