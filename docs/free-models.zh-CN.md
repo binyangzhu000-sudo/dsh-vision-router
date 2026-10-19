@@ -145,6 +145,7 @@
 | `presets/zai.yaml` | 智谱 bigmodel.cn | `glm-4.6v-flash` | ✅ | **永久免费** |
 | `presets/siliconflow.yaml` | 硅基流动 | `Qwen/Qwen2.5-VL-7B/32B-Instruct` | ✅ | ¥14 赠金覆盖 |
 | `presets/openrouter.yaml` | OpenRouter | `google/gemma-4-31b-it:free` 等 | 需代理 | 50 次/天；免费名单轮换频繁 |
+| `presets/atlascloud.yaml` | Atlas Cloud | `qwen/qwen3.5-flash`、`google/gemini-3.1-flash-lite` | 未测 | 按量计费（非免费）；OpenAI 兼容网关，一个 Key 多家视觉模型 |
 | `presets/ovh.yaml` | OVHcloud AI Endpoints | `Qwen2.5-VL-72B-Instruct` | ✅ | **免注册免 Key**（2 次/分钟/IP）；已内置为插件默认 httpProviders |
 
 ## 5. 结论与推荐顺序

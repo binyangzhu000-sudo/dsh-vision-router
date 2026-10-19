@@ -11,6 +11,7 @@
 - `zhipu.yaml` —— 智谱 bigmodel.cn，`glm-4.6v-flash` 永久免费（provider key 用 `zhipu`，避免与 pi-ai 内置目录里的 `zai` 编码端点冲突）
 - `siliconflow.yaml` —— 硅基流动，¥14 赠金覆盖 Qwen2.5-VL
 - `openrouter.yaml` —— OpenRouter 免费模型（50 次/天，名单会轮换）
+- `atlascloud.yaml` —— Atlas Cloud，OpenAI 兼容网关（按量计费，需 Key；一个 Key 可用 Qwen / Gemini 等多家视觉模型）
 - `ovh.yaml` —— OVHcloud AI Endpoints 匿名层：**无需账号、无需 Key**，匿名额度为每个 IP、每个模型每分钟 2 次；
   该端点已内置为插件的默认 `httpProviders`，通常无需手动配置
 
